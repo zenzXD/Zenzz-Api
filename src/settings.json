@@ -54,7 +54,8 @@
   "params": {
     "q": "Instagram post URL"
   }
-    }
+      ]
+}, 
     {
       "name": "Search Tools",
       "items": [
