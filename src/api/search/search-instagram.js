@@ -1,6 +1,27 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 
+export default {
+  name: "instagram",
+  tags: ["downloader", "instagram"],
+  params: ["q"],
+  run: async (req, res) => {
+    const { q } = req.query;
+    if (!q) return res.status(400).json({ status: false, message: "Missing parameter: q" });
+
+    try {
+      const result = await igdl(q);
+      res.json({
+        status: true,
+        creator: "ZenzzXD",
+        result,
+      });
+    } catch (err) {
+      res.status(500).json({ status: false, message: err.message || "Download failed" });
+    }
+  },
+};
+
 const igdl = async (u) => {
   let { data } = await axios.get(
     `https://snapdownloader.com/tools/instagram-downloader/download?url=${u}`
@@ -34,5 +55,3 @@ const igdl = async (u) => {
 
   return result;
 };
-
-igdl("https://www.instagram.com/reel/DJQp5dxR0YI/?igsh=ZGxmcmxmMGhnZHl4").then(console.log)
