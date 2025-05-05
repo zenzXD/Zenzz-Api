@@ -1,33 +1,11 @@
-import axios from "axios";
-import * as cheerio from "cheerio";
+const axios = require("axios");
+const cheerio = require("cheerio");
 
-export default {
-  name: "instagram",
-  tags: ["downloader", "instagram"],
-  params: ["q"],
-  run: async (req, res) => {
-    const { q } = req.query;
-    if (!q) return res.status(400).json({ status: false, message: "Missing parameter: q" });
-
-    try {
-      const result = await igdl(q);
-      res.json({
-        status: true,
-        creator: "ZenzzXD",
-        result,
-      });
-    } catch (err) {
-      res.status(500).json({ status: false, message: err.message || "Download failed" });
-    }
-  },
-};
-
-const igdl = async (u) => {
-  let { data } = await axios.get(
-    `https://snapdownloader.com/tools/instagram-downloader/download?url=${u}`
+async function igdl(url) {
+  const { data } = await axios.get(
+    `https://snapdownloader.com/tools/instagram-downloader/download?url=${url}`
   );
-  let $ = cheerio.load(data);
-
+  const $ = cheerio.load(data);
   const result = {
     type: null,
     links: [],
@@ -40,8 +18,8 @@ const igdl = async (u) => {
   if (videoItems.length > 0) {
     result.type = "video";
     videoItems.find(".btn-download").each((i, el) => {
-      const url = $(el).attr("href");
-      result.links.push(url);
+      const link = $(el).attr("href");
+      if (link) result.links.push(link);
     });
   } else {
     const photoLink = $(".profile-info .btn-download").attr("href");
@@ -54,4 +32,20 @@ const igdl = async (u) => {
   }
 
   return result;
+}
+
+module.exports = function(app) {
+  app.get('/search/instagram', async (req, res) => {
+    const { q } = req.query;
+    if (!q) {
+      return res.status(400).json({ status: false, error: 'URL is required' });
+    }
+
+    try {
+      const result = await igdl(q);
+      res.status(200).json({ status: true, result });
+    } catch (error) {
+      res.status(500).json({ status: false, error: error.message });
+    }
+  });
 };
