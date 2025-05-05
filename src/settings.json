@@ -47,6 +47,15 @@
       ]
     },
     {
+  "name": "Instagram",
+  "desc": "Instagram Downloader video",
+  "path": "/downloader-instagram?q=",
+  "status": "ready",
+  "params": {
+    "q": "Instagram post URL"
+  }
+    }
+    {
       "name": "Search Tools",
       "items": [
         {
