@@ -59,7 +59,7 @@
           }
         },
         {
-          "name": "Instagram",
+          "name": "Downloader",
           "desc": "Instagram video/photo downloader",
           "path": "/search/instagram?q=",
           "status": "ready",
