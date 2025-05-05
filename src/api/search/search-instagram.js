@@ -1,51 +1,66 @@
-const axios = require("axios");
-const cheerio = require("cheerio");
+// search/search-instagram.js
+const axios = require('axios');
+const qs = require('qs');
+const cheerio = require('cheerio');
 
-async function igdl(url) {
-  const { data } = await axios.get(
-    `https://snapdownloader.com/tools/instagram-downloader/download?url=${url}`
-  );
-  const $ = cheerio.load(data);
-  const result = {
-    type: null,
-    links: [],
-  };
+async function igdl(urls) {
+  const [baseUrl, paramsString] = urls.split('?');
+  const params = new URLSearchParams(paramsString);
+  const url = baseUrl;
+  const igsh = params.get('igsh');
 
-  const videoItems = $(".download-item").filter((i, el) => {
-    return $(el).find(".type").text().trim().toLowerCase() === "video";
+  const data = qs.stringify({
+    'url': url,
+    'igsh': igsh,
+    'lang': 'en'
   });
 
-  if (videoItems.length > 0) {
-    result.type = "video";
-    videoItems.find(".btn-download").each((i, el) => {
-      const link = $(el).attr("href");
-      if (link) result.links.push(link);
-    });
-  } else {
-    const photoLink = $(".profile-info .btn-download").attr("href");
-    if (photoLink) {
-      result.type = "photo";
-      result.links.push(photoLink);
-    } else {
-      throw new Error("Jenis konten tidak didukung");
-    }
-  }
+  const config = {
+    method: 'POST',
+    url: 'https://api.instasave.website/media',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'origin': 'https://instasave.website',
+      'referer': 'https://instasave.website/',
+      'accept-language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+    },
+    data: data
+  };
 
-  return result;
+  try {
+    const api = await axios.request(config);
+    const $ = cheerio.load(api.data);
+    const thumbnailUrl = $('img').attr('src')?.replace(/\\"/g, '');
+    const downloadUrl = $('a').attr('href')?.replace(/\\"/g, '');
+
+    if (!downloadUrl) throw new Error('Download URL not found');
+
+    return {
+      thumbnail: thumbnailUrl,
+      downloadUrl: downloadUrl
+    };
+  } catch (error) {
+    throw new Error('Gagal mengambil data Instagram: ' + error.message);
+  }
 }
 
 module.exports = function(app) {
   app.get('/search/instagram', async (req, res) => {
     const { q } = req.query;
-    if (!q) {
-      return res.status(400).json({ status: false, error: 'URL is required' });
-    }
+    if (!q) return res.status(400).json({ status: false, error: 'URL Instagram dibutuhkan' });
 
     try {
       const result = await igdl(q);
-      res.status(200).json({ status: true, result });
-    } catch (error) {
-      res.status(500).json({ status: false, error: error.message });
+      res.status(200).json({
+        status: true,
+        result
+      });
+    } catch (err) {
+      res.status(500).json({
+        status: false,
+        error: err.message
+      });
     }
   });
 };
