@@ -57,15 +57,10 @@
           "params": {
             "q": "Search query"
           }
-        }
-      ]
-    },
-    {
-      "name": "Downloader",
-      "items": [
+        },
         {
           "name": "Instagram",
-          "desc": "Instagram Downloader video",
+          "desc": "Instagram video/photo downloader",
           "path": "/search/instagram?q=",
           "status": "ready",
           "params": {
