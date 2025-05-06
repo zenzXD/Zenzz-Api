@@ -82,6 +82,20 @@
           }
         }
       ]
+    },
+    {
+      "name": "Tools",
+      "items": [
+        {
+          "name": "Upscale",
+          "desc": "Kirim link URL gambar untuk di-upscale (max 5MB)",
+          "path": "/tools/upscale?img=",
+          "status": "ready",
+          "params": {
+            "img": "URL gambar yang akan di-upscale"
+          }
+        }
+      ]
     }
   ]
 }
