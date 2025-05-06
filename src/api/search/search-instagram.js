@@ -1,8 +1,3 @@
-// search/search-instagram.js
-const axios = require('axios');
-const cheerio = require('cheerio');
-const FormData = require('form-data');
-
 async function savevidIG(instagramUrl) {
   try {
     const formData1 = new FormData();
@@ -30,7 +25,10 @@ async function savevidIG(instagramUrl) {
       }
     });
 
-    const html = res.data.data;
+    // Tambahkan log ini untuk melihat isi data mentah dari response
+    console.log(res.data); // Melihat seluruh response mentah
+
+    const html = res.data.data; // Extract the data from the response
     const $ = cheerio.load(html);
     const results = [];
 
@@ -54,24 +52,3 @@ async function savevidIG(instagramUrl) {
     throw new Error('Gagal mengambil data dari Savevid: ' + e.message);
   }
 }
-
-module.exports = function(app) {
-  app.get('/search/instagram', async (req, res) => {
-    const { q } = req.query;
-    if (!q) return res.status(400).json({ status: false, error: 'Masukkan parameter ?q=' });
-
-    try {
-      const result = await savevidIG(q);
-      res.json({
-        status: true,
-        creator: 'ZenzzXD',
-        result
-      });
-    } catch (err) {
-      res.status(500).json({
-        status: false,
-        error: err.message
-      });
-    }
-  });
-};
