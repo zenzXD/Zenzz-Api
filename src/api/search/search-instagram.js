@@ -1,6 +1,6 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const FormData = require('form-data');
+import axios from 'axios';
+import cheerio from 'cheerio';
+import FormData from 'form-data';
 
 const Savevid = async (instagramUrl) => {
   try {
@@ -40,7 +40,7 @@ const Savevid = async (instagramUrl) => {
 
     return extractData(ajaxSearchResponse.data.data);
   } catch (error) {
-    throw new Error(error.response ? error.response.data : error.message);
+    throw new Error(error.response?.data || error.message);
   }
 };
 
@@ -48,12 +48,12 @@ const extractData = (html) => {
   const $ = cheerio.load(html);
   const results = [];
 
-  $('ul.download-box li').each((index, element) => {
-    const thumb = $(element).find('.download-items__thumb img').attr('src');
+  $('ul.download-box li').each((_, el) => {
+    const thumb = $(el).find('.download-items__thumb img').attr('src');
     const options = [];
-    const downloadLink = $(element).find('.download-items__btn a').attr('href');
+    const downloadLink = $(el).find('.download-items__btn a').attr('href');
 
-    $(element).find('.photo-option select option').each((i, opt) => {
+    $(el).find('.photo-option select option').each((_, opt) => {
       options.push({
         resolution: $(opt).text(),
         url: $(opt).attr('value'),
@@ -70,11 +70,25 @@ const extractData = (html) => {
   return results;
 };
 
-(async () => {
-  try {
-    const data = await Savevid('https://www.instagram.com/p/DHe7V9KBxYO/?img_index=1&igsh=Nmp6bzhmYjk5MHR0');
-    console.log(JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error('Error:', error.message);
+export default {
+  name: 'savevid',
+  description: 'Download video Instagram dari savevid.net',
+  usage: '/savevid <url_instagram>',
+  category: 'downloader',
+  async execute(m, { args }) {
+    if (!args[0]) return m.reply('Masukkan URL Instagram yang valid!');
+    try {
+      const result = await Savevid(args[0]);
+      if (!result.length) return m.reply('Gagal mengambil data.');
+
+      let teks = result.map((item, i) => {
+        const opsi = item.options.map((o, j) => `   ${j + 1}. ${o.resolution} - ${o.url}`).join('\n');
+        return `*Media ${i + 1}:*\nThumbnail: ${item.thumb}\nLink Langsung: ${item.downloadLink}\nPilihan Resolusi:\n${opsi}`;
+      }).join('\n\n');
+
+      m.reply(teks);
+    } catch (err) {
+      m.reply(`Gagal: ${err.message}`);
+    }
   }
-})();
+};
