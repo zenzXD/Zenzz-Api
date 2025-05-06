@@ -2,38 +2,40 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const FormData = require('form-data');
 
-async function savevidDownloader(instagramUrl) {
+async function savevidIG(url) {
   try {
-    const form1 = new FormData();
-    form1.append('url', instagramUrl);
+    // Step 1: Get cftoken
+    const verifyForm = new FormData();
+    verifyForm.append('url', url);
 
-    const tokenRes = await axios.post('https://savevid.net/api/userverify', form1, {
-      headers: form1.getHeaders()
+    const verify = await axios.post('https://savevid.net/api/userverify', verifyForm, {
+      headers: verifyForm.getHeaders()
     });
 
-    const token = tokenRes.data?.token;
+    const token = verify.data?.token;
     if (!token) throw new Error('Token tidak ditemukan');
 
-    const form2 = new FormData();
-    form2.append('q', instagramUrl);
-    form2.append('t', 'media');
-    form2.append('lang', 'id');
-    form2.append('v', 'v2');
-    form2.append('cftoken', token);
+    // Step 2: Search media with token
+    const searchForm = new FormData();
+    searchForm.append('q', url);
+    searchForm.append('t', 'media');
+    searchForm.append('lang', 'id');
+    searchForm.append('v', 'v2');
+    searchForm.append('cftoken', token);
 
-    const res2 = await axios.post('https://v3.savevid.net/api/ajaxSearch', form2, {
+    const res = await axios.post('https://v3.savevid.net/api/ajaxSearch', searchForm, {
       headers: {
-        ...form2.getHeaders(),
+        ...searchForm.getHeaders(),
         'origin': 'https://savevid.net',
         'referer': 'https://savevid.net/',
         'user-agent': 'Mozilla/5.0 (Linux; Android 10)',
-        'accept-language': 'id-ID,id;q=0.9,en-US;q=0.8',
+        'accept-language': 'id-ID,id;q=0.9',
       }
     });
 
-    return extractData(res2.data?.data);
-  } catch (error) {
-    throw new Error('Gagal mengambil data Savevid: ' + error.message);
+    return extractData(res.data.data);
+  } catch (err) {
+    throw new Error('Gagal mengambil data: ' + err.message);
   }
 }
 
@@ -53,37 +55,26 @@ function extractData(html) {
       });
     });
 
-    result.push({ thumb, downloadLink, options });
+    result.push({
+      thumbnail: thumb,
+      download: downloadLink,
+      options
+    });
   });
 
   return result;
 }
 
-module.exports = function (app) {
-  app.get('/search/savevid', async (req, res) => {
+module.exports = function(app) {
+  app.get('/search/instagram', async (req, res) => {
     const { q } = req.query;
-    if (!q) {
-      return res.status(400).json({
-        status: false,
-        error: 'URL Instagram dibutuhkan'
-      });
-    }
+    if (!q) return res.status(400).json({ status: false, error: 'Parameter ?q=URL diperlukan' });
 
     try {
-      const result = await savevidDownloader(q);
-      if (!result.length) {
-        return res.status(404).json({ status: false, error: 'Media tidak ditemukan' });
-      }
-
-      res.status(200).json({
-        status: true,
-        result
-      });
+      const result = await savevidIG(q);
+      res.json({ status: true, result });
     } catch (err) {
-      res.status(500).json({
-        status: false,
-        error: err.message
-      });
+      res.status(500).json({ status: false, error: err.message });
     }
   });
 };
