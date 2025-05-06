@@ -1,13 +1,21 @@
+const axios = require('axios');
+const FormData = require('form-data');
+
 async function savevidIG(instagramUrl) {
   try {
     const formData1 = new FormData();
     formData1.append('url', instagramUrl);
+    
+    // Logging request headers and data
+    console.log('Request Headers:', formData1.getHeaders());
+    console.log('Request Data:', formData1);
 
     const userVerify = await axios.post('https://savevid.net/api/userverify', formData1, {
-      headers: formData1.getHeaders()
+      headers: formData1.getHeaders(),
     });
 
     const token = userVerify.data.token;
+    console.log('Token:', token);
 
     const formData2 = new FormData();
     formData2.append('q', instagramUrl);
@@ -16,6 +24,9 @@ async function savevidIG(instagramUrl) {
     formData2.append('v', 'v2');
     formData2.append('cftoken', token);
 
+    // Log request before sending
+    console.log('Request Data for Ajax Search:', formData2);
+    
     const res = await axios.post('https://v3.savevid.net/api/ajaxSearch', formData2, {
       headers: {
         ...formData2.getHeaders(),
@@ -25,13 +36,14 @@ async function savevidIG(instagramUrl) {
       }
     });
 
-    // Tambahkan log ini untuk melihat isi data mentah dari response
-    console.log(res.data); // Melihat seluruh response mentah
-
+    // Check the response before parsing
+    console.log('Response Data:', res.data);
+    
     const html = res.data.data; // Extract the data from the response
-    const $ = cheerio.load(html);
     const results = [];
 
+    // Parse the data
+    const $ = cheerio.load(html);
     $('ul.download-box li').each((_, el) => {
       const thumb = $(el).find('.download-items__thumb img').attr('src');
       const downloadLink = $(el).find('.download-items__btn a').attr('href');
@@ -49,6 +61,7 @@ async function savevidIG(instagramUrl) {
 
     return results;
   } catch (e) {
+    console.error('Error:', e.message);
     throw new Error('Gagal mengambil data dari Savevid: ' + e.message);
   }
 }
