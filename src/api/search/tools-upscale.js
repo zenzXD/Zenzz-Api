@@ -401,3 +401,38 @@ const bigjpg = {
 };
 
 export default bigjpg;
+// Tambahan paling bawah bigjpg.js
+
+export default async function handler(req, res) {
+  const { img, style = 'art', noise = '-1' } = req.query;
+
+  if (!img) {
+    return res.status(400).json({
+      success: false,
+      message: 'Kasih URL gambar dulu bree.'
+    });
+  }
+
+  try {
+    const result = await bigjpg.upscale(img, { style, noise });
+
+    if (!result.success) {
+      return res.status(result.code).json({
+        success: false,
+        message: result.result.error
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Upscale berhasil!',
+      ...result.result
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal upscale: ' + err.message
+    });
+  }
+}
