@@ -1,67 +1,87 @@
 const axios = require('axios');
 const FormData = require('form-data');
+const cheerio = require('cheerio');
 
-async function savevidIG(instagramUrl) {
+const Savevid = async (instagramUrl) => {
   try {
-    const formData1 = new FormData();
-    formData1.append('url', instagramUrl);
-    
-    // Logging request headers and data
-    console.log('Request Headers:', formData1.getHeaders());
-    console.log('Request Data:', formData1);
+    const formDataUserVerify = new FormData();
+    formDataUserVerify.append('url', instagramUrl);
 
-    const userVerify = await axios.post('https://savevid.net/api/userverify', formData1, {
-      headers: formData1.getHeaders(),
+    // Request untuk userverify
+    const userVerifyResponse = await axios.post('https://savevid.net/api/userverify', formDataUserVerify, {
+      headers: formDataUserVerify.getHeaders(),
     });
 
-    const token = userVerify.data.token;
-    console.log('Token:', token);
+    console.log('userVerifyResponse:', userVerifyResponse.data); // Cek respon userverify
 
-    const formData2 = new FormData();
-    formData2.append('q', instagramUrl);
-    formData2.append('t', 'media');
-    formData2.append('lang', 'id');
-    formData2.append('v', 'v2');
-    formData2.append('cftoken', token);
+    const token = userVerifyResponse.data.token;
 
-    // Log request before sending
-    console.log('Request Data for Ajax Search:', formData2);
-    
-    const res = await axios.post('https://v3.savevid.net/api/ajaxSearch', formData2, {
+    const formDataAjaxSearch = new FormData();
+    formDataAjaxSearch.append('q', instagramUrl);
+    formDataAjaxSearch.append('t', 'media');
+    formDataAjaxSearch.append('lang', 'id');
+    formDataAjaxSearch.append('v', 'v2');
+    formDataAjaxSearch.append('cftoken', token);
+
+    // Request untuk ajaxSearch
+    const ajaxSearchResponse = await axios.post('https://v3.savevid.net/api/ajaxSearch', formDataAjaxSearch, {
       headers: {
-        ...formData2.getHeaders(),
+        ...formDataAjaxSearch.getHeaders(),
+        'authority': 'v3.savevid.net',
+        'accept': '*/*',
+        'accept-language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
         'origin': 'https://savevid.net',
         'referer': 'https://savevid.net/',
-        'user-agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36'
-      }
+        'sec-ch-ua': '"Not A(Brand";v="8", "Chromium";v="132"',
+        'sec-ch-ua-mobile': '?1',
+        'sec-ch-ua-platform': '"Android"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site',
+        'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36',
+      },
     });
 
-    // Check the response before parsing
-    console.log('Response Data:', res.data);
-    
-    const html = res.data.data; // Extract the data from the response
-    const results = [];
+    console.log('ajaxSearchResponse:', ajaxSearchResponse.data); // Cek respon ajaxSearch
 
-    // Parse the data
-    const $ = cheerio.load(html);
-    $('ul.download-box li').each((_, el) => {
-      const thumb = $(el).find('.download-items__thumb img').attr('src');
-      const downloadLink = $(el).find('.download-items__btn a').attr('href');
-      const options = [];
-
-      $(el).find('.photo-option select option').each((_, opt) => {
-        options.push({
-          resolution: $(opt).text().trim(),
-          url: $(opt).attr('value')
-        });
-      });
-
-      results.push({ thumb, downloadLink, options });
-    });
-
-    return results;
-  } catch (e) {
-    console.error('Error:', e.message);
-    throw new Error('Gagal mengambil data dari Savevid: ' + e.message);
+    return extractData(ajaxSearchResponse.data.data);
+  } catch (error) {
+    console.error('Error:', error.message);
+    throw new Error(error.response ? error.response.data : error.message);
   }
-}
+};
+
+const extractData = (html) => {
+  const $ = cheerio.load(html);
+  const results = [];
+
+  $('ul.download-box li').each((index, element) => {
+    const thumb = $(element).find('.download-items__thumb img').attr('src');
+    const options = [];
+    const downloadLink = $(element).find('.download-items__btn a').attr('href');
+
+    $(element).find('.photo-option select option').each((i, opt) => {
+      options.push({
+        resolution: $(opt).text(),
+        url: $(opt).attr('value'),
+      });
+    });
+
+    results.push({
+      thumb,
+      options,
+      downloadLink,
+    });
+  });
+
+  return results;
+};
+
+(async () => {
+  try {
+    const data = await Savevid('https://www.instagram.com/p/DHe7V9KBxYO/?img_index=1&igsh=Nmp6bzhmYjk5MHR0');
+    console.log(JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+})();
