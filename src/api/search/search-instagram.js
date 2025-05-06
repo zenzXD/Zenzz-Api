@@ -1,80 +1,77 @@
+// search/search-instagram.js
 const axios = require('axios');
 const cheerio = require('cheerio');
 const FormData = require('form-data');
 
-async function savevidIG(url) {
+async function savevidIG(instagramUrl) {
   try {
-    // Step 1: Get cftoken
-    const verifyForm = new FormData();
-    verifyForm.append('url', url);
+    const formData1 = new FormData();
+    formData1.append('url', instagramUrl);
 
-    const verify = await axios.post('https://savevid.net/api/userverify', verifyForm, {
-      headers: verifyForm.getHeaders()
+    const userVerify = await axios.post('https://savevid.net/api/userverify', formData1, {
+      headers: formData1.getHeaders()
     });
 
-    const token = verify.data?.token;
-    if (!token) throw new Error('Token tidak ditemukan');
+    const token = userVerify.data.token;
 
-    // Step 2: Search media with token
-    const searchForm = new FormData();
-    searchForm.append('q', url);
-    searchForm.append('t', 'media');
-    searchForm.append('lang', 'id');
-    searchForm.append('v', 'v2');
-    searchForm.append('cftoken', token);
+    const formData2 = new FormData();
+    formData2.append('q', instagramUrl);
+    formData2.append('t', 'media');
+    formData2.append('lang', 'id');
+    formData2.append('v', 'v2');
+    formData2.append('cftoken', token);
 
-    const res = await axios.post('https://v3.savevid.net/api/ajaxSearch', searchForm, {
+    const res = await axios.post('https://v3.savevid.net/api/ajaxSearch', formData2, {
       headers: {
-        ...searchForm.getHeaders(),
+        ...formData2.getHeaders(),
         'origin': 'https://savevid.net',
         'referer': 'https://savevid.net/',
-        'user-agent': 'Mozilla/5.0 (Linux; Android 10)',
-        'accept-language': 'id-ID,id;q=0.9',
+        'user-agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36'
       }
     });
 
-    return extractData(res.data.data);
-  } catch (err) {
-    throw new Error('Gagal mengambil data: ' + err.message);
-  }
-}
+    const html = res.data.data;
+    const $ = cheerio.load(html);
+    const results = [];
 
-function extractData(html) {
-  const $ = cheerio.load(html);
-  const result = [];
+    $('ul.download-box li').each((_, el) => {
+      const thumb = $(el).find('.download-items__thumb img').attr('src');
+      const downloadLink = $(el).find('.download-items__btn a').attr('href');
+      const options = [];
 
-  $('ul.download-box li').each((_, el) => {
-    const thumb = $(el).find('.download-items__thumb img').attr('src');
-    const downloadLink = $(el).find('.download-items__btn a').attr('href');
-    const options = [];
-
-    $(el).find('.photo-option select option').each((_, opt) => {
-      options.push({
-        resolution: $(opt).text(),
-        url: $(opt).attr('value')
+      $(el).find('.photo-option select option').each((_, opt) => {
+        options.push({
+          resolution: $(opt).text().trim(),
+          url: $(opt).attr('value')
+        });
       });
+
+      results.push({ thumb, downloadLink, options });
     });
 
-    result.push({
-      thumbnail: thumb,
-      download: downloadLink,
-      options
-    });
-  });
-
-  return result;
+    return results;
+  } catch (e) {
+    throw new Error('Gagal mengambil data dari Savevid: ' + e.message);
+  }
 }
 
 module.exports = function(app) {
   app.get('/search/instagram', async (req, res) => {
     const { q } = req.query;
-    if (!q) return res.status(400).json({ status: false, error: 'Parameter ?q=URL diperlukan' });
+    if (!q) return res.status(400).json({ status: false, error: 'Masukkan parameter ?q=' });
 
     try {
       const result = await savevidIG(q);
-      res.json({ status: true, result });
+      res.json({
+        status: true,
+        creator: 'ZenzzXD',
+        result
+      });
     } catch (err) {
-      res.status(500).json({ status: false, error: err.message });
+      res.status(500).json({
+        status: false,
+        error: err.message
+      });
     }
   });
 };
