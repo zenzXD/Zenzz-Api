@@ -61,16 +61,14 @@
       ]
     },
     {
-      "name": "Downloader",
-      "items": [
-        {
-          "name": "Instagram",
-          "desc": "Instagram Downloader video",
-          "path": "/search/instagram?q=",
-          "status": "ready",
-          "params": {
-            "q": "Instagram post URL"
-          }
+  "name": "Downloader",
+  "desc": "Instagram Downloader video",
+  "path": "/downloader-instagram?q=",
+  "status": "ready",
+  "params": {
+    "q": "Instagram post URL"
+  }
+}
         },
         {
           "name": "TikTok",
