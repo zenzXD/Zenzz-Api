@@ -1,87 +1,50 @@
-const axios = require('axios');
-const FormData = require('form-data');
-const cheerio = require('cheerio');
+import axios from "axios";
+import * as cheerio from "cheerio";
 
-const Savevid = async (instagramUrl) => {
+export const command = ['downloader-instagram'];
+export const tags = ['downloader'];
+export const help = ['downloader-instagram <url>'];
+export const premium = false;
+
+export async function handler(m, { conn, args }) {
+  if (!args[0]) throw 'Masukkan URL Instagram!';
   try {
-    const formDataUserVerify = new FormData();
-    formDataUserVerify.append('url', instagramUrl);
+    const url = args[0];
+    const { data } = await axios.get(
+      `https://snapdownloader.com/tools/instagram-downloader/download?url=${url}`
+    );
+    const $ = cheerio.load(data);
 
-    // Request untuk userverify
-    const userVerifyResponse = await axios.post('https://savevid.net/api/userverify', formDataUserVerify, {
-      headers: formDataUserVerify.getHeaders(),
+    const result = {
+      type: null,
+      links: [],
+    };
+
+    const videoItems = $(".download-item").filter((i, el) => {
+      return $(el).find(".type").text().trim().toLowerCase() === "video";
     });
 
-    console.log('userVerifyResponse:', userVerifyResponse.data); // Cek respon userverify
-
-    const token = userVerifyResponse.data.token;
-
-    const formDataAjaxSearch = new FormData();
-    formDataAjaxSearch.append('q', instagramUrl);
-    formDataAjaxSearch.append('t', 'media');
-    formDataAjaxSearch.append('lang', 'id');
-    formDataAjaxSearch.append('v', 'v2');
-    formDataAjaxSearch.append('cftoken', token);
-
-    // Request untuk ajaxSearch
-    const ajaxSearchResponse = await axios.post('https://v3.savevid.net/api/ajaxSearch', formDataAjaxSearch, {
-      headers: {
-        ...formDataAjaxSearch.getHeaders(),
-        'authority': 'v3.savevid.net',
-        'accept': '*/*',
-        'accept-language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-        'origin': 'https://savevid.net',
-        'referer': 'https://savevid.net/',
-        'sec-ch-ua': '"Not A(Brand";v="8", "Chromium";v="132"',
-        'sec-ch-ua-mobile': '?1',
-        'sec-ch-ua-platform': '"Android"',
-        'sec-fetch-dest': 'empty',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'same-site',
-        'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36',
-      },
-    });
-
-    console.log('ajaxSearchResponse:', ajaxSearchResponse.data); // Cek respon ajaxSearch
-
-    return extractData(ajaxSearchResponse.data.data);
-  } catch (error) {
-    console.error('Error:', error.message);
-    throw new Error(error.response ? error.response.data : error.message);
-  }
-};
-
-const extractData = (html) => {
-  const $ = cheerio.load(html);
-  const results = [];
-
-  $('ul.download-box li').each((index, element) => {
-    const thumb = $(element).find('.download-items__thumb img').attr('src');
-    const options = [];
-    const downloadLink = $(element).find('.download-items__btn a').attr('href');
-
-    $(element).find('.photo-option select option').each((i, opt) => {
-      options.push({
-        resolution: $(opt).text(),
-        url: $(opt).attr('value'),
+    if (videoItems.length > 0) {
+      result.type = "video";
+      videoItems.find(".btn-download").each((i, el) => {
+        const href = $(el).attr("href");
+        if (href) result.links.push(href);
       });
-    });
+    } else {
+      const photoLink = $(".profile-info .btn-download").attr("href");
+      if (photoLink) {
+        result.type = "photo";
+        result.links.push(photoLink);
+      } else {
+        throw 'Jenis konten tidak didukung atau link tidak valid.';
+      }
+    }
 
-    results.push({
-      thumb,
-      options,
-      downloadLink,
-    });
-  });
-
-  return results;
-};
-
-(async () => {
-  try {
-    const data = await Savevid('https://www.instagram.com/p/DHe7V9KBxYO/?img_index=1&igsh=Nmp6bzhmYjk5MHR0');
-    console.log(JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error('Error:', error.message);
+    if (result.links.length === 0) throw 'Tidak ada link media yang ditemukan.';
+    for (const link of result.links) {
+      await conn.sendFile(m.chat, link, 'media.mp4', `Hasil ${result.type}`, m);
+    }
+  } catch (err) {
+    throw `Gagal mengambil data: ${err}`;
   }
-})();
+}
