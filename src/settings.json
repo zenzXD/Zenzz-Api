@@ -60,15 +60,6 @@
         }
       ]
     },
-    {
-  "name": "Downloader",
-  "desc": "Instagram Downloader video",
-  "path": "/downloader-instagram?q=",
-  "status": "ready",
-  "params": {
-    "q": "Instagram post URL"
-  }
-}
         },
         {
           "name": "TikTok",
